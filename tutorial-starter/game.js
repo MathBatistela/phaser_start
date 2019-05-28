@@ -13,8 +13,8 @@ var config = {
         mode: Phaser.Scale.FIT,
         parent: 'game-container',
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 1920, // FULL HD
-        height: 1080
+        width: 1280, // FULL HD
+        height: 720
     },
     physics: {
         default: 'arcade',
@@ -50,7 +50,7 @@ var launchCounter
 var launchTime
 
 function preload() {
-    this.load.spritesheet('ship', 'assets/ship_124x48.png',
+    this.load.spritesheet('ship', 'assets/ship_124x48_blue.png',
             { frameWidth: 124, frameHeight: 48 } )
     this.load.spritesheet('bullet', 'assets/bullet_20x21.png',
             { frameWidth: 20, frameHeight: 21 } )
@@ -103,6 +103,7 @@ function create() {
     ship.setSize(ship.width-40, ship.height-30)
     ship.setOffset(30,20)
     ship.hitCounter = 0
+    ship.shield = 5
 
     cannon = this.physics.add.sprite(ship.x, ship.y, 'cannon')
     cannon.isShooting = false
@@ -234,7 +235,7 @@ function createExplosion(x, y, scale=1) {
 
 function updatePlayer(context) {
     if (!ship.active)
-    return
+        return
     
     if (cursors.left.isDown) {
         ship.setAccelerationX(-VALUES.SHIP_ACCELERATION)
@@ -265,6 +266,15 @@ function updatePlayer(context) {
     if (cannon.isShooting && cannon.shotCounter > cannon.shotRate) {
         cannon.shotCounter = 0
         firePlayerBullet(context)
+    }
+
+    ship.hitCounter--
+    if (ship.hitCounter > 0) {
+        ship.visible = !ship.visible
+        cannon.visible = !cannon.visible
+    } else {
+        ship.visible = true
+        cannon.visible = true
     }
 }
 
@@ -378,9 +388,27 @@ function update() {
 
     this.physics.world.overlap(bullets, asteroids, hitAsteroids, null, this)
     this.physics.world.overlap(enemyBullets, asteroids, hitAsteroids, null, this)
+    this.physics.world.overlap(ship, enemies, hitPlayer, null, this)
+    this.physics.world.overlap(ship, enemyBullets, hitPlayer, null, this)
     
     this.physics.world.overlap(bullets, enemies, hitEnemy, null, this)
 }
+
+function hitPlayer(ship, other) {
+    if (ship.hitCounter > 0)
+        return
+
+    ship.hitCounter = 90
+    createExplosion(other.x, other.y)
+    other.disableBody(true, true)
+    ship.shield--
+    if (ship.shield <= 0) {
+        ship.disableBody(true, true)
+        cannon.disableBody(true, true)
+        target.disableBody(true, true)
+        createExplosion(ship.x, ship.y, 3)
+    }
+} 
 
 function hitAsteroids(bullet, asteroid) {
     createExplosion(bullet.x, bullet.y)
